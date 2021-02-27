@@ -13,7 +13,8 @@
 
 (defn- parse-cookies
   [request token-name]
-  (some->> (get-in request [:cookies "Authorization" :value])
+  (some->> (or (get-in request [:cookies "Authorization" :value])
+               (get-in request [:headers "authorization"]))
            (re-find (re-pattern (str "^" token-name " (.+)$")))
            (second)))
 
