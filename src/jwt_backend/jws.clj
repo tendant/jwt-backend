@@ -11,7 +11,7 @@
     {:status 403 :headers {} :body "Permission denied"}
     {:status 401 :headers {} :body "Unauthorized"}))
 
-(defn- parse-cookies
+(defn- parse-authorization
   [request token-name]
   (some->> (or (get-in request [:cookies "Authorization" :value])
                (get-in request [:headers "authorization"]))
@@ -25,7 +25,7 @@
   (reify
     proto/IAuthentication
     (-parse [_ request]
-      (parse-cookies request token-name))
+      (parse-authorization request token-name))
 
     (-authenticate [_ request data]
       (try
