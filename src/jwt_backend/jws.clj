@@ -11,21 +11,36 @@
     {:status 403 :headers {} :body "Permission denied"}
     {:status 401 :headers {} :body "Unauthorized"}))
 
-(defn- parse-authorization
-  [request token-name]
-  (some->> (or (get-in request [:cookies "Authorization" :value])
-               (get-in request [:headers "authorization"]))
-           (re-find (re-pattern (str "^" token-name " (.+)$")))
-           (second)))
+(defn match-token
+  [token-name authorization]
+  (if (and token-name
+           authorization)
+    (-> (re-pattern (str "^" token-name " (.+)$"))
+        (re-find authorization)
+        second)))
+
+(defn match-tokens
+  [token-name tokens authorization]
+  (if token-name
+    (match-token token-name authorization)
+    (some #(match-token % authorization) tokens)))
+
+(defn parse-authorization
+  [request token-name tokens]
+  (let [auth (or (get-in request [:cookies "Authorization" :value])
+                 (get-in request [:headers "authorization"]))]
+    (match-tokens token-name tokens auth)))
 
 (defn jws-backend
-  [{:keys [secret authfn unauthorized-handler options token-name on-error]
-    :or {authfn identity token-name "Token"}}]
+  [{:keys [secret authfn unauthorized-handler options token-name tokens on-error]
+    :or {authfn identity
+         token-name "Token"
+         tokens []}}]
   {:pre [(ifn? authfn)]}
   (reify
     proto/IAuthentication
     (-parse [_ request]
-      (parse-authorization request token-name))
+      (parse-authorization request token-name tokens))
 
     (-authenticate [_ request data]
       (try
